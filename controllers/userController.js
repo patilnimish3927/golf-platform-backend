@@ -19,3 +19,18 @@ exports.addScore = async (req, res) => {
 
   res.json({ msg: 'Score added' })
 }
+
+exports.getScores = async (req, res) => {
+  const userId = req.user.id
+
+  const { data, error } = await supabase
+    .from('scores')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(5)
+
+  if (error) return res.status(400).json(error)
+
+  res.json(data)
+}

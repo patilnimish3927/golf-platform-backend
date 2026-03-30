@@ -3,5 +3,5 @@ const { verifyUser } = require('../middlewares/auth')
 const { addScore } = require('../controllers/userController')
 
 router.post('/score', verifyUser, addScore)
-
+router.get('/scores', verifyUser, getScores)
 module.exports = router
