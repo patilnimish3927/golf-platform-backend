@@ -33,5 +33,5 @@ exports.login = async (req, res) => {
 
   const token = jwt.sign({ id: data.id, role: data.role }, process.env.JWT_SECRET)
 
-  res.json({ token })
+  res.json({ token, role: data.role })
 }
