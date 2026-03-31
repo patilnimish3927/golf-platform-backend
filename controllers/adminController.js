@@ -3,22 +3,29 @@ const supabase = require('../config/supabase')
 exports.runDraw = async (req, res) => {
   const numbers = [1,2,3,4,5]
 
-  const { data: drawData } = await supabase
+  const { data: lastDraw } = await supabase
+    .from('draws')
+    .select('id')
+    .order('draw_date', { ascending: false })
+    .limit(1)
+
+  const previousDrawId = lastDraw[0]?.id || null
+
+  const { data: users } = await supabase.from('users').select('id')
+
+  const { data: newDraw } = await supabase
     .from('draws')
     .insert([{ numbers }])
     .select()
 
-  const drawId = drawData[0].id
-
-  await supabase.from('winnings').delete().neq('id', '0')
-
-  const { data: users } = await supabase.from('users').select('id')
+  const newDrawId = newDraw[0].id
 
   for (const user of users) {
     const { data: scores } = await supabase
       .from('scores')
       .select('score')
       .eq('user_id', user.id)
+      .eq('draw_id', previousDrawId)
 
     if (!scores || scores.length === 0) continue
 
@@ -32,7 +39,7 @@ exports.runDraw = async (req, res) => {
           match_count: matches,
           amount: 0,
           status: 'pending',
-          draw_id: drawId
+          draw_id: newDrawId
         }
       ])
     }

@@ -8,10 +8,19 @@ exports.addScore = async (req, res) => {
     return res.status(400).json({ msg: 'Invalid score' })
   }
 
+  const { data: latestDraw } = await supabase
+    .from('draws')
+    .select('id')
+    .order('draw_date', { ascending: false })
+    .limit(1)
+
+  const drawId = latestDraw[0]?.id || null
+
   const { data: existing } = await supabase
     .from('scores')
     .select('*')
     .eq('user_id', userId)
+    .eq('draw_id', drawId)
     .order('created_at', { ascending: true })
 
   if (existing.length >= 5) {
@@ -21,7 +30,8 @@ exports.addScore = async (req, res) => {
   const { error } = await supabase.from('scores').insert([
     {
       user_id: userId,
-      score
+      score,
+      draw_id: drawId
     }
   ])
 
@@ -33,10 +43,19 @@ exports.addScore = async (req, res) => {
 exports.getScores = async (req, res) => {
   const userId = req.user.id
 
+  const { data: latestDraw } = await supabase
+    .from('draws')
+    .select('id')
+    .order('draw_date', { ascending: false })
+    .limit(1)
+
+  const drawId = latestDraw[0]?.id || null
+
   const { data, error } = await supabase
     .from('scores')
     .select('*')
     .eq('user_id', userId)
+    .eq('draw_id', drawId)
     .order('created_at', { ascending: false })
     .limit(5)
 
@@ -46,13 +65,11 @@ exports.getScores = async (req, res) => {
 }
 
 exports.getLatestDraw = async (req, res) => {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from('draws')
     .select('*')
     .order('draw_date', { ascending: false })
     .limit(1)
-
-  if (error) return res.status(400).json(error)
 
   res.json(data[0] || null)
 }
@@ -60,13 +77,11 @@ exports.getLatestDraw = async (req, res) => {
 exports.getWinnings = async (req, res) => {
   const userId = req.user.id
 
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from('winnings')
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
-
-  if (error) return res.status(400).json(error)
 
   res.json(data)
 }
