@@ -3,6 +3,12 @@ const supabase = require('../config/supabase')
 exports.runDraw = async (req, res) => {
   const numbers = [1,2,3,4,5]
 
+  const totalPool = 1000
+
+  const jackpotPool = totalPool * 0.4
+  const tier4Pool = totalPool * 0.35
+  const tier3Pool = totalPool * 0.25
+
   const { data: lastDraw } = await supabase
     .from('draws')
     .select('id')
@@ -20,6 +26,10 @@ exports.runDraw = async (req, res) => {
 
   const newDrawId = newDraw[0].id
 
+  const tier5 = []
+  const tier4 = []
+  const tier3 = []
+
   for (const user of users) {
     const { data: scores } = await supabase
       .from('scores')
@@ -32,18 +42,33 @@ exports.runDraw = async (req, res) => {
     const uniqueScores = [...new Set(scores.map(s => s.score))]
     const matches = uniqueScores.filter(n => numbers.includes(n)).length
 
-    if (matches >= 3) {
+    if (matches === 5) tier5.push(user.id)
+    else if (matches === 4) tier4.push(user.id)
+    else if (matches === 3) tier3.push(user.id)
+  }
+
+  const distribute = async (users, pool, match) => {
+    if (users.length === 0) return
+
+    const amount = pool / users.length
+
+    for (const userId of users) {
       await supabase.from('winnings').insert([
         {
-          user_id: user.id,
-          match_count: matches,
-          amount: 0,
+          user_id: userId,
+          match_count: match,
+          amount,
           status: 'pending',
-          draw_id: newDrawId
+          draw_id: newDrawId,
+          charity_amount: amount * 0.1
         }
       ])
     }
   }
+
+  await distribute(tier5, jackpotPool, 5)
+  await distribute(tier4, tier4Pool, 4)
+  await distribute(tier3, tier3Pool, 3)
 
   res.json({ numbers })
 }
