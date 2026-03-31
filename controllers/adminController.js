@@ -1,5 +1,29 @@
 const supabase = require('../config/supabase')
 
+exports.getAllWinnings = async (req, res) => {
+  const { data, error } = await supabase
+    .from('winnings')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) return res.status(400).json(error)
+
+  res.json(data)
+}
+
+exports.verifyWinner = async (req, res) => {
+  const { id, status } = req.body
+
+  const { error } = await supabase
+    .from('winnings')
+    .update({ status })
+    .eq('id', id)
+
+  if (error) return res.status(400).json(error)
+
+  res.json({ msg: 'Updated' })
+}
+
 exports.runDraw = async (req, res) => {
   const numbers = [1,2,3,4,5]
 

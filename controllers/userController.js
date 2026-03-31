@@ -85,3 +85,52 @@ exports.getWinnings = async (req, res) => {
 
   res.json(data)
 }
+
+exports.activateSubscription = async (req, res) => {
+  const userId = req.user.id
+
+  const { error } = await supabase
+    .from('users')
+    .update({ subscription_status: 'active' })
+    .eq('id', userId)
+
+  if (error) return res.status(400).json(error)
+
+  res.json({ msg: 'Subscription activated' })
+}
+
+exports.selectCharity = async (req, res) => {
+  const userId = req.user.id
+  const { charity_id, percentage } = req.body
+
+  if (percentage < 10) {
+    return res.status(400).json({ msg: 'Minimum 10%' })
+  }
+
+  const { error } = await supabase
+    .from('users')
+    .update({
+      charity_id,
+      charity_percentage: percentage
+    })
+    .eq('id', userId)
+
+  if (error) return res.status(400).json(error)
+
+  res.json({ msg: 'Charity updated' })
+}
+
+exports.uploadProof = async (req, res) => {
+  const userId = req.user.id
+  const { proof_url, winning_id } = req.body
+
+  const { error } = await supabase
+    .from('winnings')
+    .update({ proof_url })
+    .eq('id', winning_id)
+    .eq('user_id', userId)
+
+  if (error) return res.status(400).json(error)
+
+  res.json({ msg: 'Proof uploaded' })
+}
