@@ -192,10 +192,3 @@ exports.updateCharity = async (req, res) => {
   res.json({ msg: 'Updated' })
 }
 
-module.exports = {
-  signup,
-  login,
-  addScore,
-  getScores,
-  getProfile
-}
