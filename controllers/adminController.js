@@ -10,17 +10,7 @@ const generateNumbers = () => {
 }
 
 exports.runDraw = async (req, res) => {
-  const generateNumbers = () => {
-    const nums = []
-    while (nums.length < 5) {
-      const n = Math.floor(Math.random() * 45) + 1
-      if (!nums.includes(n)) nums.push(n)
-    }
-    return nums
-  }
-
-  const numbers = [1, 2, 3, 4, 5]
-  // const numbers = generateNumbers()
+  const numbers = [1,2,3,4,5]
 
   const { data: drawData } = await supabase
     .from('draws')
@@ -29,10 +19,7 @@ exports.runDraw = async (req, res) => {
 
   const drawId = drawData[0].id
 
-  await supabase
-    .from('winnings')
-    .delete()
-    .neq('id', '0')
+  await supabase.from('winnings').delete().neq('id', '0')
 
   const { data: users } = await supabase.from('users').select('id')
 
@@ -41,13 +28,12 @@ exports.runDraw = async (req, res) => {
       .from('scores')
       .select('score')
       .eq('user_id', user.id)
+      .eq('draw_id', drawId)
 
-    const userScores = scores.map(s => s.score)
+    if (!scores || scores.length === 0) continue
 
-    const uniqueScores = [...new Set(userScores)]
-    const uniqueDraw = [...new Set(numbers)]
-
-    const matches = uniqueScores.filter(s => uniqueDraw.includes(s)).length
+    const uniqueScores = [...new Set(scores.map(s => s.score))]
+    const matches = uniqueScores.filter(n => numbers.includes(n)).length
 
     if (matches >= 3) {
       await supabase.from('winnings').insert([
@@ -61,10 +47,6 @@ exports.runDraw = async (req, res) => {
       ])
     }
   }
-  await supabase
-    .from('scores')
-    .delete()
-    .neq('id', '0')
 
   res.json({ numbers })
 }
