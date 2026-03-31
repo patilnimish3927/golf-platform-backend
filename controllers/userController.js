@@ -3,11 +3,13 @@ const supabase = require('../config/supabase')
 exports.getProfile = async (req, res) => {
   const userId = req.user.id
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('users')
-    .select('*')
+    .select('subscription_status, charity_percentage')
     .eq('id', userId)
     .single()
+
+  if (error) return res.status(400).json(error)
 
   res.json(data)
 }
@@ -188,4 +190,12 @@ exports.updateCharity = async (req, res) => {
     .eq('id', userId)
 
   res.json({ msg: 'Updated' })
+}
+
+module.exports = {
+  signup,
+  login,
+  addScore,
+  getScores,
+  getProfile
 }

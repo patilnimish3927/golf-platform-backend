@@ -22,4 +22,5 @@ app.use('/auth', authRoutes)
 app.use('/user', userRoutes)
 app.use('/admin', adminRoutes)
 
+
 app.listen(process.env.PORT, () => console.log('Server running'))
