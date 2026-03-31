@@ -1,14 +1,5 @@
 const supabase = require('../config/supabase')
 
-const generateNumbers = () => {
-  const nums = []
-  while (nums.length < 5) {
-    const n = Math.floor(Math.random() * 45) + 1
-    if (!nums.includes(n)) nums.push(n)
-  }
-  return nums
-}
-
 exports.runDraw = async (req, res) => {
   const numbers = [1,2,3,4,5]
 
@@ -28,7 +19,6 @@ exports.runDraw = async (req, res) => {
       .from('scores')
       .select('score')
       .eq('user_id', user.id)
-      .eq('draw_id', drawId)
 
     if (!scores || scores.length === 0) continue
 

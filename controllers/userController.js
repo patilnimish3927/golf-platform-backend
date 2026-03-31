@@ -4,33 +4,28 @@ exports.addScore = async (req, res) => {
   const userId = req.user.id
   const { score } = req.body
 
-  const { data: latestDraw } = await supabase
-    .from('draws')
-    .select('id')
-    .order('draw_date', { ascending: false })
-    .limit(1)
+  if (!score || score < 1 || score > 45) {
+    return res.status(400).json({ msg: 'Invalid score' })
+  }
 
-  const drawId = latestDraw[0]?.id || null
-
-  const { data } = await supabase
+  const { data: existing } = await supabase
     .from('scores')
     .select('*')
     .eq('user_id', userId)
-    .eq('draw_id', drawId)
     .order('created_at', { ascending: true })
 
-  if (data.length >= 5) {
-    const oldest = data[0]
-    await supabase.from('scores').delete().eq('id', oldest.id)
+  if (existing.length >= 5) {
+    await supabase.from('scores').delete().eq('id', existing[0].id)
   }
 
-  await supabase.from('scores').insert([
+  const { error } = await supabase.from('scores').insert([
     {
       user_id: userId,
-      score,
-      draw_id: drawId
+      score
     }
   ])
+
+  if (error) return res.status(400).json(error)
 
   res.json({ msg: 'Score added' })
 }
@@ -38,19 +33,10 @@ exports.addScore = async (req, res) => {
 exports.getScores = async (req, res) => {
   const userId = req.user.id
 
-  const { data: latestDraw } = await supabase
-    .from('draws')
-    .select('id')
-    .order('draw_date', { ascending: false })
-    .limit(1)
-
-  const drawId = latestDraw[0]?.id || null
-
   const { data, error } = await supabase
     .from('scores')
     .select('*')
     .eq('user_id', userId)
-    .eq('draw_id', drawId)
     .order('created_at', { ascending: false })
     .limit(5)
 
@@ -68,7 +54,7 @@ exports.getLatestDraw = async (req, res) => {
 
   if (error) return res.status(400).json(error)
 
-  res.json(data[0])
+  res.json(data[0] || null)
 }
 
 exports.getWinnings = async (req, res) => {
