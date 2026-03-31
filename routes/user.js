@@ -1,11 +1,12 @@
 const router = require('express').Router()
 const { verifyUser } = require('../middlewares/auth')
-const { addScore, getScores, getLatestDraw, getWinnings, activateSubscription, selectCharity, uploadProof } = require('../controllers/userController')
+const { addScore, getScores, getLatestDraw, getWinnings, updateCharity, activateSubscription, selectCharity, uploadProof } = require('../controllers/userController')
 router.post('/score', verifyUser, addScore)
 router.get('/scores', verifyUser, getScores)
 router.get('/draw/latest', verifyUser, getLatestDraw)
 router.get('/winnings', verifyUser, getWinnings)
 router.post('/subscribe', verifyUser, activateSubscription)
 router.post('/charity', verifyUser, selectCharity)
+router.post('/charity/update', verifyUser, updateCharity)
 router.post('/proof', verifyUser, uploadProof)
 module.exports = router

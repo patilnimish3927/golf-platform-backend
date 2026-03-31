@@ -5,12 +5,13 @@ require('dotenv').config()
 const authRoutes = require('./routes/auth')
 const userRoutes = require('./routes/user')
 const adminRoutes = require('./routes/admin')
+const paymentRoutes = require('./routes/payment')
 
 const app = express()
 
 app.use(cors())
 app.use(express.json())
-
+app.use('/payment', paymentRoutes)
 app.use('/auth', authRoutes)
 app.use('/user', userRoutes)
 app.use('/admin', adminRoutes)

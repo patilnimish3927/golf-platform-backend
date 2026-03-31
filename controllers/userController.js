@@ -134,3 +134,46 @@ exports.uploadProof = async (req, res) => {
 
   res.json({ msg: 'Proof uploaded' })
 }
+
+exports.signup = async (req, res) => {
+  const { email, password, charity_percentage } = req.body
+
+  if (!email || !password) {
+    return res.status(400).json({ msg: 'Missing fields' })
+  }
+
+  if (charity_percentage < 10) {
+    return res.status(400).json({ msg: 'Minimum 10% charity required' })
+  }
+
+  const { data, error } = await supabase
+    .from('users')
+    .insert([
+      {
+        email,
+        password,
+        charity_percentage
+      }
+    ])
+    .select()
+
+  if (error) return res.status(400).json(error)
+
+  res.json(data)
+}
+
+exports.updateCharity = async (req, res) => {
+  const userId = req.user.id
+  const { charity_percentage } = req.body
+
+  if (charity_percentage < 10) {
+    return res.status(400).json({ msg: 'Minimum 10%' })
+  }
+
+  await supabase
+    .from('users')
+    .update({ charity_percentage })
+    .eq('id', userId)
+
+  res.json({ msg: 'Updated' })
+}
