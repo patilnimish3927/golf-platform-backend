@@ -1,5 +1,17 @@
 const supabase = require('../config/supabase')
 
+exports.getProfile = async (req, res) => {
+  const userId = req.user.id
+
+  const { data } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .single()
+
+  res.json(data)
+}
+
 exports.addScore = async (req, res) => {
   const userId = req.user.id
   const { score } = req.body

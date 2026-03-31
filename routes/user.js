@@ -1,6 +1,6 @@
 const router = require('express').Router()
 const { verifyUser } = require('../middlewares/auth')
-const { addScore, getScores, getLatestDraw, getWinnings, updateCharity, activateSubscription, selectCharity, uploadProof } = require('../controllers/userController')
+const { addScore, getScores, getProfile, getLatestDraw, getWinnings, updateCharity, activateSubscription, selectCharity, uploadProof } = require('../controllers/userController')
 router.post('/score', verifyUser, addScore)
 router.get('/scores', verifyUser, getScores)
 router.get('/draw/latest', verifyUser, getLatestDraw)
@@ -9,4 +9,5 @@ router.post('/subscribe', verifyUser, activateSubscription)
 router.post('/charity', verifyUser, selectCharity)
 router.post('/charity/update', verifyUser, updateCharity)
 router.post('/proof', verifyUser, uploadProof)
+router.get('/profile', verifyUser, getProfile)
 module.exports = router

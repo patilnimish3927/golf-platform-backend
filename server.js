@@ -10,7 +10,13 @@ const paymentRoutes = require('./routes/payment')
 const app = express()
 
 app.use(cors())
-app.use(express.json())
+app.use((req, res, next) => {
+  if (req.originalUrl === '/payment/webhook') {
+    next()
+  } else {
+    express.json()(req, res, next)
+  }
+})
 app.use('/payment', paymentRoutes)
 app.use('/auth', authRoutes)
 app.use('/user', userRoutes)
