@@ -21,11 +21,36 @@ exports.runDraw = async (req, res) => {
 
   const numbers = generateNumbers()
 
-  const { error } = await supabase
+  const { data: drawData } = await supabase
     .from('draws')
     .insert([{ numbers }])
+    .select()
 
-  if (error) return res.status(400).json(error)
+  const drawId = drawData[0].id
+
+  const { data: users } = await supabase.from('users').select('id')
+
+  for (const user of users) {
+    const { data: scores } = await supabase
+      .from('scores')
+      .select('score')
+      .eq('user_id', user.id)
+
+    const userScores = scores.map(s => s.score)
+
+    const matches = userScores.filter(s => numbers.includes(s)).length
+
+    if (matches >= 3) {
+      await supabase.from('winnings').insert([
+        {
+          user_id: user.id,
+          match_count: matches,
+          amount: 0,
+          status: 'pending'
+        }
+      ])
+    }
+  }
 
   res.json({ numbers })
 }

@@ -46,3 +46,17 @@ exports.getLatestDraw = async (req, res) => {
 
   res.json(data[0])
 }
+
+exports.getWinnings = async (req, res) => {
+  const userId = req.user.id
+
+  const { data, error } = await supabase
+    .from('winnings')
+    .select('*')
+    .eq('user_id', userId)
+    .order('id', { ascending: false })
+
+  if (error) return res.status(400).json(error)
+
+  res.json(data)
+}
