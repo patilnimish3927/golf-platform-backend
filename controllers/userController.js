@@ -34,3 +34,15 @@ exports.getScores = async (req, res) => {
 
   res.json(data)
 }
+
+exports.getLatestDraw = async (req, res) => {
+  const { data, error } = await supabase
+    .from('draws')
+    .select('*')
+    .order('draw_date', { ascending: false })
+    .limit(1)
+
+  if (error) return res.status(400).json(error)
+
+  res.json(data[0])
+}
