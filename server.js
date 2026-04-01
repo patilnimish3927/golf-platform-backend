@@ -17,10 +17,10 @@ app.use((req, res, next) => {
     express.json()(req, res, next)
   }
 })
-
 app.use('/payment', paymentRoutes)
 app.use('/auth', authRoutes)
 app.use('/user', userRoutes)
 app.use('/admin', adminRoutes)
 
-app.listen(process.env.PORT)
+
+app.listen(process.env.PORT, () => console.log('Server running'))

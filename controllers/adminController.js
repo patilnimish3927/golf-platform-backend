@@ -1,44 +1,58 @@
 const supabase = require('../config/supabase')
 
-const generateNumbers = () => {
-  const nums = new Set()
-  while (nums.size < 5) {
-    nums.add(Math.floor(Math.random() * 45) + 1)
-  }
-  return [...nums]
+exports.getAllWinnings = async (req, res) => {
+  const { data, error } = await supabase
+    .from('winnings')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) return res.status(400).json(error)
+
+  res.json(data)
+}
+
+exports.verifyWinner = async (req, res) => {
+  const { id, status } = req.body
+
+  const { error } = await supabase
+    .from('winnings')
+    .update({ status })
+    .eq('id', id)
+
+  if (error) return res.status(400).json(error)
+
+  res.json({ msg: 'Updated' })
 }
 
 exports.runDraw = async (req, res) => {
-  const numbers = generateNumbers()
+  const numbers = [1,2,3,4,5]
 
-  const { data: subs } = await supabase.from('subscriptions').select('*').eq('status', 'active')
-
-  const totalPool = subs.length * 99
+  const totalPool = 1000
 
   const jackpotPool = totalPool * 0.4
   const tier4Pool = totalPool * 0.35
   const tier3Pool = totalPool * 0.25
 
-  const { data: prevDraw } = await supabase
+  const { data: lastDraw } = await supabase
     .from('draws')
-    .select('*')
+    .select('id')
     .order('draw_date', { ascending: false })
     .limit(1)
 
-  const previousDrawId = prevDraw[0]?.id || null
+  const previousDrawId = lastDraw[0]?.id || null
 
-  const { data: users } = await supabase.from('users').select('*')
+  const { data: users } = await supabase.from('users').select('id')
 
   const { data: newDraw } = await supabase
     .from('draws')
-    .insert([{ numbers, jackpot: jackpotPool }])
+    .insert([{ numbers }])
     .select()
 
-  const drawId = newDraw[0].id
+  const newDrawId = newDraw[0].id
 
-  let tier5 = []
-  let tier4 = []
-  let tier3 = []
+  const tier5 = []
+  const tier4 = []
+  const tier3 = []
 
   for (const user of users) {
     const { data: scores } = await supabase
@@ -49,37 +63,30 @@ exports.runDraw = async (req, res) => {
 
     if (!scores || scores.length === 0) continue
 
-    const unique = [...new Set(scores.map(s => s.score))]
-    const matches = unique.filter(n => numbers.includes(n)).length
+    const uniqueScores = [...new Set(scores.map(s => s.score))]
+    const matches = uniqueScores.filter(n => numbers.includes(n)).length
 
-    if (matches === 5) tier5.push(user)
-    if (matches === 4) tier4.push(user)
-    if (matches === 3) tier3.push(user)
+    if (matches === 5) tier5.push(user.id)
+    else if (matches === 4) tier4.push(user.id)
+    else if (matches === 3) tier3.push(user.id)
   }
 
-  const distribute = async (arr, pool, match) => {
-    if (arr.length === 0) return
+  const distribute = async (users, pool, match) => {
+    if (users.length === 0) return
 
-    const amount = pool / arr.length
+    const amount = pool / users.length
 
-    for (const user of arr) {
-      const charity = (amount * (user.charity_percentage || 10)) / 100
-
-      await supabase.from('winnings').insert([{
-        user_id: user.id,
-        match_count: match,
-        amount,
-        charity_amount: charity,
-        status: 'pending',
-        draw_id: drawId
-      }])
-
-      if (user.charity_id) {
-        await supabase.rpc('increment_charity', {
-          charity_id_input: user.charity_id,
-          amount_input: charity
-        })
-      }
+    for (const userId of users) {
+      await supabase.from('winnings').insert([
+        {
+          user_id: userId,
+          match_count: match,
+          amount,
+          status: 'pending',
+          draw_id: newDrawId,
+          charity_amount: amount * 0.1
+        }
+      ])
     }
   }
 
@@ -88,15 +95,4 @@ exports.runDraw = async (req, res) => {
   await distribute(tier3, tier3Pool, 3)
 
   res.json({ numbers })
-}
-
-exports.getAllWinnings = async (req, res) => {
-  const { data } = await supabase.from('winnings').select('*')
-  res.json(data)
-}
-
-exports.verifyWinner = async (req, res) => {
-  const { id, status } = req.body
-  await supabase.from('winnings').update({ status }).eq('id', id)
-  res.json({ msg: 'updated' })
 }
