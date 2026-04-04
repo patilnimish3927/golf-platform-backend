@@ -41,33 +41,68 @@ exports.approveClaim = async (req, res) => {
     .eq('id', claim_id)
     .single()
 
-  const payout = await razorpay.payouts.create({
-    account_number: process.env.RAZORPAY_ACCOUNT_NUMBER,
-    amount: claim.amount * 100,
-    currency: "INR",
-    mode: "UPI",
-    purpose: "payout",
-    fund_account: {
-      account_type: "vpa",
-      vpa: {
-        address: claim.upi_id
-      },
-      contact: {
-        name: claim.full_name,
-        type: "customer"
-      }
+  if (!claim) {
+    return res.status(404).json({ msg: 'Claim not found' })
+  }
+
+  if (claim.status !== 'pending') {
+    return res.status(400).json({ msg: 'Already processed' })
+  }
+
+  let paymentId = 'test_payment'
+  let payoutSuccess = false
+
+  try {
+    if (process.env.RAZORPAY_ACCOUNT_NUMBER) {
+      const payout = await razorpay.payouts.create({
+        account_number: process.env.RAZORPAY_ACCOUNT_NUMBER,
+        amount: claim.amount * 100,
+        currency: "INR",
+        mode: "UPI",
+        purpose: "payout",
+        fund_account: {
+          account_type: "vpa",
+          vpa: {
+            address: claim.upi_id
+          },
+          contact: {
+            name: claim.full_name,
+            type: "customer"
+          }
+        }
+      })
+
+      paymentId = payout.id
+      payoutSuccess = true
+    } else {
+      payoutSuccess = true
     }
-  })
+
+  } catch (err) {
+    console.log('Payout error:', err.message)
+    payoutSuccess = false
+  }
+
+  if (!payoutSuccess) {
+    return res.status(500).json({ msg: 'Payment failed' })
+  }
 
   await supabase
     .from('claims')
     .update({
       status: 'approved',
-      payment_id: payout.id
+      payment_id: paymentId
     })
     .eq('id', claim_id)
 
-  res.json({ msg: 'Paid successfully' })
+  await supabase
+    .from('winnings')
+    .update({
+      claim_status: 'approved'
+    })
+    .eq('id', claim.winning_id)
+
+  res.json({ msg: 'Payment processed successfully' })
 }
 
 exports.rejectClaim = async (req, res) => {

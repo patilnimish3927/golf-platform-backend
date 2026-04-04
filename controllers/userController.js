@@ -95,13 +95,29 @@ exports.submitClaim = async (req, res) => {
   const userId = req.user.id
   const { winning_id, full_name, phone, upi_id } = req.body
 
+  if (!winning_id || !full_name || !phone || !upi_id) {
+    return res.status(400).json({ msg: 'All fields required' })
+  }
+
+  const { data: existing } = await supabase
+    .from('claims')
+    .select('*')
+    .eq('winning_id', winning_id)
+    .eq('user_id', userId)
+
+  if (existing && existing.length > 0) {
+    return res.status(400).json({ msg: 'Already claimed' })
+  }
+
   const { data: winning } = await supabase
     .from('winnings')
     .select('*')
     .eq('id', winning_id)
     .single()
 
-  if (!winning) return res.status(404).json({ msg: 'Winning not found' })
+  if (!winning) {
+    return res.status(404).json({ msg: 'Winning not found' })
+  }
 
   await supabase.from('claims').insert([{
     user_id: userId,
@@ -109,7 +125,8 @@ exports.submitClaim = async (req, res) => {
     full_name,
     phone,
     upi_id,
-    amount: winning.amount
+    amount: winning.amount,
+    status: 'pending'
   }])
 
   await supabase
@@ -117,7 +134,7 @@ exports.submitClaim = async (req, res) => {
     .update({ claim_status: 'submitted' })
     .eq('id', winning_id)
 
-  res.json({ msg: 'Claim submitted' })
+  res.json({ msg: 'Claim submitted successfully' })
 }
 
 exports.updateCharity = async (req, res) => {
