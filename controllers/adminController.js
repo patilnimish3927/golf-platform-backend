@@ -8,6 +8,30 @@ const generateNumbers = () => {
   return Array.from(nums)
 }
 
+exports.getAllWinnings = async (req, res) => {
+  const { data, error } = await supabase
+    .from('winnings')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) return res.status(400).json(error)
+
+  res.json(data)
+}
+
+exports.verifyWinner = async (req, res) => {
+  const { id, status } = req.body
+
+  const { error } = await supabase
+    .from('winnings')
+    .update({ status })
+    .eq('id', id)
+
+  if (error) return res.status(400).json(error)
+
+  res.json({ msg: 'Updated' })
+}
+
 exports.runDraw = async (req, res) => {
   const numbers = generateNumbers()
 
@@ -19,7 +43,9 @@ exports.runDraw = async (req, res) => {
 
   const previousDrawId = lastDraw[0]?.id || null
 
-  const { data: users } = await supabase.from('users').select('id, charity_percentage, charity_id')
+  const { data: users } = await supabase
+    .from('users')
+    .select('id, charity_percentage, charity_id')
 
   const { data: newDraw } = await supabase
     .from('draws')
@@ -28,7 +54,7 @@ exports.runDraw = async (req, res) => {
 
   const newDrawId = newDraw[0].id
 
-  let totalPool = users.length * 99
+  const totalPool = users.length * 99
 
   const jackpotPool = totalPool * 0.4
   const tier4Pool = totalPool * 0.35
@@ -71,13 +97,6 @@ exports.runDraw = async (req, res) => {
         draw_id: newDrawId,
         charity_amount: charityAmount
       }])
-
-      if (user.charity_id) {
-        await supabase.rpc('increment_charity', {
-          cid: user.charity_id,
-          amt: charityAmount
-        })
-      }
     }
   }
 
