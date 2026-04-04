@@ -4,13 +4,18 @@ const supabase = require('../config/supabase')
 
 exports.createOrder = async (req, res) => {
   const { amount, plan } = req.body
+  const userId = req.user.id
 
   const order = await razorpay.orders.create({
     amount,
-    currency: 'INR'
+    currency: 'INR',
+    notes: {
+      user_id: userId,
+      plan
+    }
   })
 
-  res.json({ ...order, plan })
+  res.json(order)
 }
 
 exports.webhookHandler = async (req, res) => {
@@ -30,16 +35,8 @@ exports.webhookHandler = async (req, res) => {
   const event = JSON.parse(req.body.toString())
 
   if (event.event === 'payment.captured') {
-    const email = event.payload.payment.entity.email
-    const plan = event.payload.payment.entity.notes?.plan || 'monthly'
-
-    const { data: user } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .single()
-
-    if (!user) return res.json({})
+    const userId = event.payload.payment.entity.notes.user_id
+    const plan = event.payload.payment.entity.notes.plan
 
     const start = new Date()
     const end = new Date()
@@ -48,7 +45,7 @@ exports.webhookHandler = async (req, res) => {
     else end.setMonth(end.getMonth() + 1)
 
     await supabase.from('subscriptions').insert([{
-      user_id: user.id,
+      user_id: userId,
       plan,
       status: 'active',
       start_date: start,
@@ -58,7 +55,7 @@ exports.webhookHandler = async (req, res) => {
     await supabase
       .from('users')
       .update({ subscription_status: 'active' })
-      .eq('id', user.id)
+      .eq('id', userId)
   }
 
   res.json({ status: 'ok' })
