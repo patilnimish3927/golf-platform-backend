@@ -5,7 +5,7 @@ exports.getProfile = async (req, res) => {
 
   const { data, error } = await supabase
     .from('users')
-    .select('subscription_status, charity_percentage')
+    .select('*')
     .eq('id', userId)
     .single()
 
@@ -95,16 +95,27 @@ exports.submitClaim = async (req, res) => {
   const userId = req.user.id
   const { winning_id, full_name, phone, upi_id } = req.body
 
+  const { data: winning } = await supabase
+    .from('winnings')
+    .select('*')
+    .eq('id', winning_id)
+    .single()
+
+  if (!winning) return res.status(404).json({ msg: 'Winning not found' })
+
+  await supabase.from('claims').insert([{
+    user_id: userId,
+    winning_id,
+    full_name,
+    phone,
+    upi_id,
+    amount: winning.amount
+  }])
+
   await supabase
     .from('winnings')
-    .update({
-      full_name,
-      phone,
-      upi_id,
-      claim_status: 'submitted'
-    })
+    .update({ claim_status: 'submitted' })
     .eq('id', winning_id)
-    .eq('user_id', userId)
 
   res.json({ msg: 'Claim submitted' })
 }

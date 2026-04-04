@@ -1,4 +1,10 @@
 const supabase = require('../config/supabase')
+const Razorpay = require('razorpay')
+
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET
+})
 
 const generateNumbers = () => {
   const nums = new Set()
@@ -9,32 +15,86 @@ const generateNumbers = () => {
 }
 
 exports.getAllWinnings = async (req, res) => {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from('winnings')
     .select('*')
     .order('created_at', { ascending: false })
 
-  if (error) return res.status(400).json(error)
+  res.json(data)
+}
+
+exports.getClaims = async (req, res) => {
+  const { data } = await supabase
+    .from('claims')
+    .select('*')
+    .order('created_at', { ascending: false })
 
   res.json(data)
+}
+
+exports.approveClaim = async (req, res) => {
+  const { claim_id } = req.body
+
+  const { data: claim } = await supabase
+    .from('claims')
+    .select('*')
+    .eq('id', claim_id)
+    .single()
+
+  const payout = await razorpay.payouts.create({
+    account_number: process.env.RAZORPAY_ACCOUNT_NUMBER,
+    amount: claim.amount * 100,
+    currency: "INR",
+    mode: "UPI",
+    purpose: "payout",
+    fund_account: {
+      account_type: "vpa",
+      vpa: {
+        address: claim.upi_id
+      },
+      contact: {
+        name: claim.full_name,
+        type: "customer"
+      }
+    }
+  })
+
+  await supabase
+    .from('claims')
+    .update({
+      status: 'approved',
+      payment_id: payout.id
+    })
+    .eq('id', claim_id)
+
+  res.json({ msg: 'Paid successfully' })
+}
+
+exports.rejectClaim = async (req, res) => {
+  const { claim_id } = req.body
+
+  await supabase
+    .from('claims')
+    .update({ status: 'rejected' })
+    .eq('id', claim_id)
+
+  res.json({ msg: 'Rejected' })
 }
 
 exports.verifyWinner = async (req, res) => {
   const { id, status } = req.body
 
-  const { error } = await supabase
+  await supabase
     .from('winnings')
     .update({ status })
     .eq('id', id)
-
-  if (error) return res.status(400).json(error)
 
   res.json({ msg: 'Updated' })
 }
 
 exports.runDraw = async (req, res) => {
-  const numbers = [1,2,3,4,5]
   // const numbers = generateNumbers()
+  const numbers = [1,2,3,4,5]
 
   const { data: lastDraw } = await supabase
     .from('draws')
@@ -96,7 +156,8 @@ exports.runDraw = async (req, res) => {
         amount,
         status: 'pending',
         draw_id: newDrawId,
-        charity_amount: charityAmount
+        charity_amount: charityAmount,
+        claim_status: 'not_claimed'
       }])
     }
   }
